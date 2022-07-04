@@ -11,7 +11,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'model/notification.dart' as notification_model;
 
 FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-bool isAppOpen = false;
 
 class FirebaseMessagingManager {
   FirebaseMessagingManager._privateConstructor();
@@ -19,13 +18,21 @@ class FirebaseMessagingManager {
   static final FirebaseMessagingManager _instance = FirebaseMessagingManager._privateConstructor();
 
   static FirebaseMessagingManager get instance => _instance;
+  String channelName = "";
+  String channelId = "";
+  String channelDesc = "";
+  bool isAppOpen = false;
 
   NotificationCallback? notificationCallback;
 
-  Future<void> init({NotificationCallback? notificationCallback}) async {
+  Future<void> init(
+      {NotificationCallback? notificationCallback, String? channelId, String? channelName, String? channelDesc}) async {
     try {
       await fb_core.Firebase.initializeApp();
       isAppOpen = true;
+      this.channelId = channelId ?? "";
+      this.channelName = channelName ?? "";
+      this.channelDesc = channelDesc ?? "";
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
       this.notificationCallback = notificationCallback;
       NotificationSettings settings =
@@ -79,6 +86,41 @@ class FirebaseMessagingManager {
     debugPrint("Message: ${jsonEncode(message?.data)}");
     openNotificationDetailScreen(message?.data ?? {}, notificationCallback);
   }
+
+  notificationMessageHandler(RemoteMessage message) async {
+    debugPrint(
+        "Message: ${jsonEncode(message.data)} or ${message.notification?.title} and ${message.notification?.body}");
+    notification_model.Notification? notification =
+        notification_model.Notification.fromJson((message.notification?.toMap()) ?? {});
+    showNotificationWithDefaultSound(notification.id, notification.title, notification.body, notification);
+  }
+
+  Future showNotificationWithDefaultSound(
+      String? id, String? title, String? body, notification_model.Notification? notification) async {
+    debugPrint("Title : $title Body : $body");
+    AndroidNotificationChannel channel = AndroidNotificationChannel(
+      channelId, // id
+      channelName, // title
+      description: channelDesc, // description
+      importance: Importance.high,
+    );
+    if (Platform.isAndroid || !isAppOpen) {
+      var iOSPlatformChannelSpecifics = const IOSNotificationDetails();
+      flutterLocalNotificationsPlugin
+          .show(
+              int.parse(id ?? "0"),
+              title,
+              body,
+              NotificationDetails(
+                  iOS: iOSPlatformChannelSpecifics,
+                  android: AndroidNotificationDetails(channel.id, channel.name,
+                      channelDescription: channel.description, icon: 'app_icon')),
+              payload: jsonEncode(notification))
+          .catchError((error) {
+        print("Error: $error");
+      });
+    }
+  }
 }
 
 void openNotificationDetailScreen(Map<String, dynamic> data, NotificationCallback? notificationCallback) {
@@ -90,41 +132,4 @@ void openNotificationDetailScreen(Map<String, dynamic> data, NotificationCallbac
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await fb_core.Firebase.initializeApp();
   debugPrint("Remote Message in Background");
-  //notificationMessageHandler(message);
 }
-
-notificationMessageHandler(RemoteMessage message) async {
-  debugPrint(
-      "Message: ${jsonEncode(message.data)} or ${message.notification?.title} and ${message.notification?.body}");
-  notification_model.Notification? notification =
-      notification_model.Notification.fromJson((message.notification?.toMap()) ?? {});
-  showNotificationWithDefaultSound(notification.id, notification.title, notification.body, notification);
-}
-
-Future showNotificationWithDefaultSound(
-    String? id, String? title, String? body, notification_model.Notification? notification) async {
-  debugPrint("Title : $title Body : $body");
-  if (Platform.isAndroid || !isAppOpen) {
-    var iOSPlatformChannelSpecifics = const IOSNotificationDetails();
-    flutterLocalNotificationsPlugin
-        .show(
-            int.parse(id ?? "0"),
-            title,
-            body,
-            NotificationDetails(
-                iOS: iOSPlatformChannelSpecifics,
-                android: AndroidNotificationDetails(channel.id, channel.name,
-                    channelDescription: channel.description, icon: 'app_icon')),
-            payload: jsonEncode(notification))
-        .catchError((error) {
-      print("Error: $error");
-    });
-  }
-}
-
-const AndroidNotificationChannel channel = AndroidNotificationChannel(
-  'iguard_channel', // id
-  'High Importance Notifications', // title
-  description: 'This channel is used for important notifications.', // description
-  importance: Importance.high,
-);
