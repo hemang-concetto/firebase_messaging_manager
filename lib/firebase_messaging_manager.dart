@@ -132,4 +132,6 @@ void openNotificationDetailScreen(Map<String, dynamic> data, NotificationCallbac
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await fb_core.Firebase.initializeApp();
   debugPrint("Remote Message in Background");
+  FirebaseMessagingManager.instance.showNotificationWithDefaultSound(
+      "1", "Hello", "Bye", notification_model.Notification(title: "Hello", body: "Bye", type: "test", id: "1"));
 }
