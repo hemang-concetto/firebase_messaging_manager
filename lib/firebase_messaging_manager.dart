@@ -7,6 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_messaging_manager/model/notification_callback.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:http/http.dart' as http;
 
 import 'model/notification.dart' as notification_model;
 
@@ -121,6 +122,32 @@ class FirebaseMessagingManager {
       });
     }
   }
+
+  sendPushNotification(
+      {required String? deviceToken,
+      required String message,
+      required String title,
+      required String serverKey,
+      Map<String, dynamic>? data}) async {
+    if (deviceToken != null) {
+      var url = Uri.parse('https://fcm.googleapis.com/fcm/send');
+      Map<String, dynamic> body = {};
+      Map<String, dynamic> notification = {};
+      notification['title'] = title;
+      notification['body'] = message;
+      notification['mutable_content'] = false;
+      notification['click_action'] = 'FLUTTER_NOTIFICATION_CLICK';
+      body['notification'] = notification;
+      body['data'] = data ?? {};
+      body['to'] = deviceToken;
+      Map<String, String> headers = {};
+      headers['Authorization'] = 'key=$serverKey';
+      headers['Content-Type'] = 'application/json';
+      var response = await http.post(url, body: jsonEncode(body), headers: headers);
+      debugPrint('sendPushNotification Response status: ${response.statusCode}');
+      debugPrint('sendPushNotification Response body: ${response.body}');
+    }
+  }
 }
 
 void openNotificationDetailScreen(Map<String, dynamic> data, NotificationCallback? notificationCallback) {
@@ -132,6 +159,11 @@ void openNotificationDetailScreen(Map<String, dynamic> data, NotificationCallbac
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await fb_core.Firebase.initializeApp();
   debugPrint("Remote Message in Background");
-  FirebaseMessagingManager.instance.showNotificationWithDefaultSound(
-      "1", "Hello", "Bye", notification_model.Notification(title: "Hello", body: "Bye", type: "test", id: "1"));
+  FirebaseMessagingManager.instance.sendPushNotification(
+      deviceToken:
+          "cLAd2lcQR0Wap6bPV0E9kl:APA91bHi6cVfHh8pCOLQjSp1N9k_DlW45Qd08-_EN8TlWyUAEgjncDHQYCDmGfQegN5j6azPum6WQAqoTMVt8kGigpR75vJZWosZ57IaFk1IKiVkHOoz_I5GRaarl6mEUBTFvDbJdfX7¬",
+      message: "Good Bye",
+      title: "Tata",
+      serverKey:
+          "AAAAukFHqdk:APA91bGPLAD7wUTZNPMcbyqe187m1vktOd0roIDwWR6_3Dn-YY7owzmddjF2glPXC4dj9GLlt4QSxsrZ3jrlsYJuaJVyBO3aZ4vtt0OjZnmx97KemAAmwINt3h-pNl5oof1DablHTjZz");
 }
