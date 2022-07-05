@@ -115,7 +115,7 @@ class FirebaseMessagingManager {
               NotificationDetails(
                   iOS: iOSPlatformChannelSpecifics,
                   android: AndroidNotificationDetails(channel.id, channel.name,
-                      channelDescription: channel.description, icon: 'app_icon')),
+                      subText: body, channelDescription: channel.description, icon: 'app_icon')),
               payload: jsonEncode(notification))
           .catchError((error) {
         print("Error: $error");
